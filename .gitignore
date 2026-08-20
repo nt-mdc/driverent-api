@@ -1,0 +1,21 @@
+# Dependências instaladas pelo npm
+node_modules/
+
+# Código TypeScript compilado
+dist/
+
+# Variáveis de ambiente com segredos locais
+.env
+
+# Base de dados SQLite local (gerada automaticamente pelo Prisma)
+prisma/dev.db
+prisma/dev.db-journal
+
+# Logs
+npm-debug.log*
+*.log
+
+# Arquivos de sistema operacional / editor
+.DS_Store
+.vscode/*
+!.vscode/extensions.json

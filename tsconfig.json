@@ -1,0 +1,39 @@
+{
+  "compilerOptions": {
+    /* ===== Configuração básica de compilação ===== */
+    "target": "ES2020",                       // Versão do JavaScript gerada na saída
+    "lib": ["ES2020"],                         // Bibliotecas de tipos disponíveis (funcionalidades modernas do JS)
+    "module": "CommonJS",                      // Sistema de módulos usado pelo Node.js
+    "moduleResolution": "node",                // Estratégia de resolução de imports igual à do Node.js
+    "outDir": "./dist",                        // Pasta onde o código compilado (JS) será gerado
+    "rootDir": "./src",                        // Pasta raiz do código-fonte TypeScript
+
+    /* ===== Tipagem estrita (fortemente recomendada para aprendizado) ===== */
+    "strict": true,                            // Ativa TODAS as verificações estritas de tipo
+    "noImplicitAny": true,                     // Proíbe variáveis com tipo implícito "any"
+    "strictNullChecks": true,                  // Obriga tratamento explícito de null/undefined
+    "noUnusedLocals": true,                    // Acusa erro em variáveis declaradas e nunca usadas
+    "noUnusedParameters": false,                // Permite parâmetros não usados (ex.: "req" em rotas que só usam "res")
+    "noImplicitReturns": true,                 // Garante que todos os caminhos de uma função retornem valor
+
+    /* ===== Interoperabilidade e compatibilidade ===== */
+    "esModuleInterop": true,                   // Permite "import x from 'modulo-cjs'" com módulos CommonJS
+    "allowSyntheticDefaultImports": true,      // Complementa o esModuleInterop para imports default
+    "forceConsistentCasingInFileNames": true,  // Evita bugs de import por diferença de maiúsculas/minúsculas
+    "skipLibCheck": true,                      // Não reverifica tipos dentro de node_modules (compilação mais rápida)
+    "resolveJsonModule": true,                 // Permite importar arquivos .json diretamente
+
+    /* ===== Decorators e metadados (não usados aqui, mas comuns em APIs Node) ===== */
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    /* ===== Geração de artefatos auxiliares ===== */
+    "sourceMap": true,                         // Gera .map para facilitar debug do código compilado
+    "declaration": false,                      // Não precisamos gerar arquivos .d.ts (isto é uma API, não uma lib)
+
+    /* ===== Tipos globais customizados (req.user) ===== */
+    "typeRoots": ["./node_modules/@types", "./src/@types"]
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
+}

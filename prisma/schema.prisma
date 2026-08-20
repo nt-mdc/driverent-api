@@ -1,0 +1,151 @@
+// ============================================================================
+// PRISMA SCHEMA - DriveRent API
+// ============================================================================
+// Este arquivo é a "planta baixa" da base de dados. O Prisma lê este
+// ficheiro para gerar o "Prisma Client" (o código TypeScript que usamos
+// nos services para consultar e alterar dados) e para criar/atualizar as
+// tabelas reais através das migrações ("npx prisma migrate dev").
+//
+// Cada bloco "model" representa uma TABELA da base de dados.
+// Cada campo dentro do model representa uma COLUNA dessa tabela.
+// ============================================================================
+
+// O "generator" diz ao Prisma o que ele deve gerar a partir deste schema.
+// "prisma-client-js" gera a biblioteca TypeScript que importamos no código
+// (import { PrismaClient } from "@prisma/client").
+generator client {
+  provider = "prisma-client-js"
+}
+
+// O "datasource" diz ao Prisma A QUAL base de dados ele deve se conectar.
+//
+// Por padrão usamos SQLite ("provider = sqlite"), porque ele não exige
+// nenhuma instalação de servidor: a base de dados é apenas um arquivo
+// (prisma/dev.db) criado automaticamente na sua máquina. Isso é perfeito
+// para uma aula, onde queremos gastar tempo aprendendo API, não instalando
+// banco de dados.
+//
+// Se quiser usar PostgreSQL (mais próximo de um ambiente de produção real),
+// basta trocar "sqlite" por "postgresql" aqui embaixo e ajustar a variável
+// DATABASE_URL no arquivo .env (veja o README.md para o passo a passo).
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// MODEL: Cliente
+// Representa a pessoa que aluga veículos na plataforma DriveRent.
+// ============================================================================
+model Cliente {
+  id       Int    @id @default(autoincrement()) // Chave primária, gerada automaticamente (1, 2, 3, ...)
+  nome     String
+  cpf      String @unique // @unique garante que não existam dois clientes com o mesmo CPF
+  email    String @unique // @unique garante que não existam dois clientes com o mesmo e-mail (usado no login)
+  senha    String // Nunca guardamos a senha em texto puro: aqui fica o HASH gerado pelo bcrypt
+  telefone String
+
+  criadoEm DateTime @default(now()) // Preenchido automaticamente com a data/hora do momento da criação
+
+  // Relação 1:N -> um Cliente pode ter várias Locações.
+  // Este campo NÃO cria uma coluna na tabela "clientes": ele é apenas a
+  // "ponte" que o Prisma usa para você navegar de um cliente até as suas locações.
+  locacoes Locacao[]
+
+  // @@map troca o nome da tabela no banco de dados para "clientes" (em minúsculo
+  // e em português), mantendo o nome do model "Cliente" no código TypeScript.
+  @@map("clientes")
+}
+
+// ============================================================================
+// MODEL: CategoriaVeiculo
+// Agrupa veículos por categoria (ex.: Popular, SUV, Luxo), cada uma com o
+// seu próprio valor de diária e de caução (depósito de segurança).
+// ============================================================================
+model CategoriaVeiculo {
+  id            Int   @id @default(autoincrement())
+  nomeCategoria String
+  valorDiaria   Float // Valor cobrado por dia de locação
+  valorCaucao   Float // Valor retido como garantia (caução) durante a locação
+
+  // Relação 1:N -> uma Categoria pode ter vários Veículos.
+  veiculos Veiculo[]
+
+  @@map("categorias_veiculos")
+}
+
+// ============================================================================
+// MODEL: Veiculo
+// Representa cada carro/moto disponível na frota da DriveRent.
+// ============================================================================
+model Veiculo {
+  id          Int @id @default(autoincrement())
+  categoriaId Int // Chave estrangeira (FK) -> aponta para CategoriaVeiculo.id
+
+  // "categoria" é o campo de relação: através dele o Prisma sabe fazer o
+  // JOIN entre "veiculos" e "categorias_veiculos" usando categoriaId.
+  categoria CategoriaVeiculo @relation(fields: [categoriaId], references: [id])
+
+  placa  String @unique // Placa do veículo, também deve ser única
+  modelo String
+  ano    Int
+
+  // Guardamos o status como texto simples (String) para manter o projeto
+  // simples para quem está começando. Os únicos valores válidos, controlados
+  // pela camada de serviço (services), são:
+  //   "Disponivel"  -> pode ser alugado
+  //   "Locado"      -> está atualmente alugado a um cliente
+  //   "Manutencao"  -> está em manutenção e não pode ser alugado
+  statusDisponibilidade String @default("Disponivel")
+
+  // Relações 1:N -> um Veículo pode ter várias Locações e várias Manutenções
+  // ao longo do tempo (histórico).
+  locacoes    Locacao[]
+  manutencoes Manutencao[]
+
+  @@map("veiculos")
+}
+
+// ============================================================================
+// MODEL: Locacao
+// Representa o CONTRATO de aluguer de um veículo por um cliente.
+// ============================================================================
+model Locacao {
+  id         Int @id @default(autoincrement())
+  clienteId  Int // FK -> Cliente.id (quem está alugando)
+  veiculoId  Int // FK -> Veiculo.id (o que está sendo alugado)
+
+  cliente Cliente @relation(fields: [clienteId], references: [id])
+  veiculo Veiculo @relation(fields: [veiculoId], references: [id])
+
+  dataRetirada          DateTime  @default(now()) // Data/hora em que o veículo saiu (início do contrato)
+  dataPrevistaDevolucao DateTime  // Data combinada para a devolução
+  dataDevolucaoReal     DateTime? // "?" torna o campo OPCIONAL (nullable): só é preenchido quando o carro volta de fato
+
+  valorTotal Float // Valor total do contrato (diárias previstas x valor da diária)
+
+  // Ciclo de vida do contrato:
+  //   "Ativo"      -> locação em andamento
+  //   "Finalizado" -> veículo já foi devolvido
+  //   "Cancelado"  -> locação cancelada antes da devolução
+  statusContrato String @default("Ativo")
+
+  @@map("locacoes")
+}
+
+// ============================================================================
+// MODEL: Manutencao
+// Representa um registo de manutenção/revisão realizada em um veículo.
+// ============================================================================
+model Manutencao {
+  id        Int @id @default(autoincrement())
+  veiculoId Int // FK -> Veiculo.id
+
+  veiculo Veiculo @relation(fields: [veiculoId], references: [id])
+
+  descricaoServico String // Ex.: "Troca de óleo e filtros"
+  dataManutencao   DateTime @default(now())
+  valorCusto       Float
+
+  @@map("manutencoes")
+}
